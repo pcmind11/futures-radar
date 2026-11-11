@@ -27,10 +27,16 @@ def front(title):
     return f'---\nlayout: default\ntitle: "{title}"\n---\n'
 
 
+FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
+
+
+def model_candidates():
+    return [m for m in dict.fromkeys([MODEL] + FALLBACK_MODELS) if m]
+
+
 def gemini(system_prompt, user_text, as_json=False):
-    if not API_KEY or not MODEL:
-        sys.exit("GEMINI_API_KEY(Secret) 또는 GEMINI_MODEL(Variable) 설정이 없습니다.")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+    if not API_KEY:
+        sys.exit("GEMINI_API_KEY(Secret) 설정이 없습니다.")
     cfg = {"temperature": 0.3}
     if as_json:
         cfg["responseMimeType"] = "application/json"
@@ -40,21 +46,32 @@ def gemini(system_prompt, user_text, as_json=False):
         "generationConfig": cfg,
     }).encode("utf-8")
     headers = {"Content-Type": "application/json", "x-goog-api-key": API_KEY}
-    for attempt in range(4):
-        try:
-            req = urllib.request.Request(url, data=body, headers=headers)
-            with urllib.request.urlopen(req, timeout=180) as r:
-                data = json.load(r)
-            parts = data["candidates"][0]["content"]["parts"]
-            return "".join(p.get("text", "") for p in parts)
-        except urllib.error.HTTPError as e:
-            msg = e.read().decode("utf-8", "ignore")[:300]
-            if e.code in (429, 500, 503) and attempt < 3:
-                time.sleep(30 * (attempt + 1))
-                continue
-            sys.exit(f"Gemini 오류 {e.code}: {msg}")
-        except (KeyError, IndexError):
-            sys.exit(f"Gemini 응답 형식 오류: {str(data)[:300]}")
+    last = ""
+    for model in model_candidates():
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        for attempt in range(4):
+            data = None
+            try:
+                req = urllib.request.Request(url, data=body, headers=headers)
+                with urllib.request.urlopen(req, timeout=180) as r:
+                    data = json.load(r)
+                parts = data["candidates"][0]["content"]["parts"]
+                if model != MODEL:
+                    print(f"모델 '{MODEL}' 대신 '{model}' 사용")
+                return "".join(p.get("text", "") for p in parts)
+            except urllib.error.HTTPError as e:
+                msg = e.read().decode("utf-8", "ignore")[:300]
+                if e.code in (429, 500, 503) and attempt < 3:
+                    time.sleep(30 * (attempt + 1))
+                    continue
+                last = f"{model} → 오류 {e.code}: {msg}"
+                print(last)
+                break
+            except (KeyError, IndexError):
+                last = f"{model} → 응답 형식 오류: {str(data)[:300]}"
+                print(last)
+                break
+    sys.exit("Gemini 호출 실패. " + last)
 
 
 def fetch_news(query, lang):
@@ -96,8 +113,7 @@ def run_daily():
                     it["domain"] = domain
                     cands.append(it)
     if not cands:
-        print("수집된 항목이 없어 오늘은 건너뜁니다.")
-        return
+        sys.exit("수집된 항목이 없습니다. 실행 방식을 check로 돌려 원인을 확인하세요.")
     lines = [f'[{i}] {c["domain"]} | {c["title"]} | {c["source"]} | {c["date"]} | {c["lang"]}'
              for i, c in enumerate(cands)]
     raw = gemini((ROOT / "prompts/daily.md").read_text(encoding="utf-8"),
@@ -190,8 +206,32 @@ def rebuild_index():
     (ROOT / "index.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def run_check():
+    print("== 점검 모드 ==")
+    print("API 키 설정:", "있음" if API_KEY else "없음")
+    print("모델 변수:", MODEL or "(비어 있음 → 기본 후보 사용)")
+    for p in ["sources.json", "prompts/daily.md", "prompts/weekly.md"]:
+        print("파일", p, "있음" if (ROOT / p).exists() else "없음!")
+    cfg = json.loads((ROOT / "sources.json").read_text(encoding="utf-8"))
+    total = 0
+    for domain, queries in cfg["domains"].items():
+        for q in queries:
+            n = len(fetch_news(q["q"], q["lang"]))
+            total += n
+            print(f"  뉴스 {n}건 | {domain} | {q['q'][:40]}")
+    print("뉴스 합계:", total)
+    print("Gemini 응답:", gemini("한 단어로만 답하라.", "ping").strip()[:50])
+    if total == 0:
+        sys.exit("뉴스가 0건입니다.")
+    print("점검 통과")
+
+
 if __name__ == "__main__":
-    run_daily()
-    if now().weekday() == 6 or os.environ.get("FORCE_WEEKLY") == "true":
-        run_weekly()
-    rebuild_index()
+    mode = os.environ.get("MODE", "").strip() or "normal"
+    if mode == "check":
+        run_check()
+    else:
+        run_daily()
+        if now().weekday() == 6 or mode == "weekly":
+            run_weekly()
+        rebuild_index()
