@@ -1,5 +1,6 @@
 """미래 레이더 - 수집·종합 에이전트 (표준 라이브러리만 사용)"""
 import datetime as dt
+import html
 import json
 import os
 import re
@@ -9,6 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -16,14 +18,48 @@ KST = dt.timezone(dt.timedelta(hours=9))
 API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 MODEL = os.environ.get("GEMINI_MODEL", "").strip()
 MAX_PER_QUERY = 10
+DATA_DIR = ROOT / "_data" / "signals"
 
 
 def now():
     return dt.datetime.now(KST)
 
 
-def front(title):
-    return f'---\nlayout: default\ntitle: "{title}"\n---\n'
+def front(title, kind, day, summary=""):
+    lines = ["---",
+             f"layout: {'daily' if kind == 'daily' else 'report'}",
+             f"type: {kind}",
+             f'day: "{day}"',
+             f"title: {json.dumps(title, ensure_ascii=False)}"]
+    if summary:
+        lines.append(f"summary: {json.dumps(summary, ensure_ascii=False)}")
+    lines.append("---")
+    return "\n".join(lines) + "\n"
+
+
+def pub_day(s):
+    try:
+        return parsedate_to_datetime(s).astimezone(KST).strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
+def glance_lines(report):
+    m = re.search(r"##\s*이번 주 한눈에\s*\n(.*?)(?=\n##\s|\Z)", report, re.S)
+    if not m:
+        return []
+    out = []
+    for ln in m.group(1).splitlines():
+        ln = re.sub(r"\[\d{6}-\d{2}\]\([^)]*\)", "", ln)
+        ln = re.sub(r"\d{6}-\d{2}", "", ln)
+        ln = re.sub(r"\[\s*\]", "", ln)
+        ln = re.sub(r"^\s*[-*•]\s*", "", ln)
+        ln = re.sub(r"\*\*|__|`", "", ln)
+        ln = re.sub(r"\s+([.,])", r"\1", ln)
+        ln = re.sub(r"\s{2,}", " ", ln).strip()
+        if ln:
+            out.append(ln)
+    return out[:5]
 
 
 FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
@@ -144,29 +180,32 @@ def run_daily():
             "kind": p.get("kind", "기타"),
             "source": c["source"],
             "date": c["date"],
+            "published": pub_day(c["date"]),
+            "day": today,
             "link": c["link"],
         })
-    (ROOT / "data").mkdir(exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     (ROOT / "daily").mkdir(exist_ok=True)
-    (ROOT / f"data/{today}.json").write_text(
+    (DATA_DIR / f"{today}.json").write_text(
         json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
-    md = [front(f"{today} 일일 신호")]
+    md = [front(f"{today} 일일 신호", "daily", today)]
     for domain in cfg["domains"]:
         group = [i for i in items if i["domain"] == domain]
         if not group:
             continue
         md.append(f"\n## {domain}\n")
         for i in group:
-            md.append(f'- **{i["ko_title"]}** `{i["horizon"]}` `{i["kind"]}`  \n'
-                      f'  {i["summary"]} (발언자: {i["speaker"]}) — '
-                      f'[{i["source"] or "원문"}]({i["link"]}) · {i["id"]}')
+            e = html.escape
+            md.append(f'- **{e(i["ko_title"])}** `{i["horizon"]}` `{i["kind"]}`  \n'
+                      f'  {e(i["summary"])} (발언자: {e(i["speaker"])}) — '
+                      f'[{e(i["source"] or "원문")}]({i["link"]}) · {i["id"]}')
     md.append("\n> 헤드라인만 보고 만든 요약이라 근거 강도는 '낮음'입니다. 중요한 내용은 원문으로 확인하세요.")
     (ROOT / f"daily/{today}.md").write_text("\n".join(md), encoding="utf-8")
     print(f"일일 신호 {len(items)}건 저장")
 
 
 def run_weekly():
-    files = sorted((ROOT / "data").glob("*.json"))[-7:]
+    files = sorted(DATA_DIR.glob("*.json"))[-7:] if DATA_DIR.exists() else []
     items = [it for f in files for it in json.loads(f.read_text(encoding="utf-8"))]
     if not items:
         print("주간 리포트: 데이터가 없어 건너뜁니다.")
@@ -185,31 +224,57 @@ def run_weekly():
     report = re.sub(r"\[\s*\d{6}-\d{2}(?:\s*,\s*\d{6}-\d{2})*\s*\](?!\()", link_group, report)
     d = now().strftime("%Y-%m-%d")
     (ROOT / "reports").mkdir(exist_ok=True)
+    summary = " ".join(glance_lines(report))[:300]
     (ROOT / f"reports/{d}-weekly.md").write_text(
-        front(f"{d} 주간 리포트") + "\n" + report, encoding="utf-8")
+        front(f"{d} 주간 리포트", "weekly", d, summary) + "\n" + report, encoding="utf-8")
     print("주간 리포트 저장")
 
 
-def rebuild_index():
-    (ROOT / "reports").mkdir(exist_ok=True)
-    (ROOT / "daily").mkdir(exist_ok=True)
-    rep = sorted((ROOT / "reports").glob("*.md"), reverse=True)
-    dly = sorted((ROOT / "daily").glob("*.md"), reverse=True)[:14]
-    lines = ["---", "layout: default", "title: 미래 레이더", "---", "",
-             "3개월 · 3년 · 10년 후의 신호를 매일 모으고 매주 정리합니다.", "", "## 주간 리포트"]
-    lines += [f"- [{p.stem.replace('-weekly', ' 주간 리포트')}](reports/{p.stem}.html)"
-              for p in rep] or ["- 아직 없음"]
-    lines += ["", "## 최근 일일 신호"]
-    lines += [f"- [{p.stem}](daily/{p.stem}.html)" for p in dly] or ["- 아직 없음"]
-    lines += ["", "> AI가 헤드라인을 요약한 자료입니다. 사실 확인은 원문으로 하세요."]
-    (ROOT / "index.md").write_text("\n".join(lines), encoding="utf-8")
+def write_recent():
+    files = sorted(DATA_DIR.glob("*.json"), reverse=True)[:30] if DATA_DIR.exists() else []
+    recent = []
+    for f in files:
+        for it in json.loads(f.read_text(encoding="utf-8")):
+            it.setdefault("day", f.stem)
+            recent.append(it)
+    (ROOT / "_data").mkdir(exist_ok=True)
+    (ROOT / "_data/recent.json").write_text(
+        json.dumps(recent, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def write_status():
+    files = sorted(DATA_DIR.glob("*.json")) if DATA_DIR.exists() else []
+    latest_day = files[-1].stem if files else ""
+    count = len(json.loads(files[-1].read_text(encoding="utf-8"))) if files else 0
+    weekly = None
+    rdir = ROOT / "reports"
+    reps = sorted(rdir.glob("*-weekly.md")) if rdir.exists() else []
+    if reps:
+        text = reps[-1].read_text(encoding="utf-8")
+        body = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S)
+        weekly = {"date": reps[-1].stem.replace("-weekly", ""),
+                  "url": f"/reports/{reps[-1].stem}.html",
+                  "lines": glance_lines(body)}
+    status = {
+        "last_run_kst": now().strftime("%Y-%m-%d %H:%M"),
+        "latest_day": latest_day,
+        "daily_count": count,
+        "schedule": "매일 한국시간 07:00 자동 수집 · 주 1회(일요일) 주간 리포트",
+        "latest_weekly": weekly,
+    }
+    (ROOT / "_data").mkdir(exist_ok=True)
+    (ROOT / "_data/status.json").write_text(
+        json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def run_check():
     print("== 점검 모드 ==")
     print("API 키 설정:", "있음" if API_KEY else "없음")
     print("모델 변수:", MODEL or "(비어 있음 → 기본 후보 사용)")
-    for p in ["sources.json", "prompts/daily.md", "prompts/weekly.md"]:
+    for p in ["sources.json", "prompts/daily.md", "prompts/weekly.md",
+              "_config.yml", "index.html", "assets/style.css",
+              "_layouts/default.html", "_layouts/daily.html",
+              "_layouts/report.html", "_layouts/horizon.html", "_includes/card.html"]:
         print("파일", p, "있음" if (ROOT / p).exists() else "없음!")
     cfg = json.loads((ROOT / "sources.json").read_text(encoding="utf-8"))
     total = 0
@@ -233,4 +298,5 @@ if __name__ == "__main__":
         run_daily()
         if now().weekday() == 6 or mode == "weekly":
             run_weekly()
-        rebuild_index()
+        write_recent()
+        write_status()
