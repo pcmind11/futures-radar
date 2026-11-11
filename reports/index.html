@@ -1,0 +1,16 @@
+---
+layout: default
+title: 주간 리포트
+---
+<h1>주간 리포트</h1>
+<div class="notice">매주 일요일 한국시간 오전 7시에 한 주의 신호를 3개월·3년·10년으로 나눠 낙관·비관 관점과 함께 정리합니다.</div>
+{% assign weekly_pages = site.pages | where_exp: "p", "p.path contains 'reports/'" | where_exp: "p", "p.path contains 'weekly'" | sort: "path" | reverse %}
+{% if weekly_pages.size == 0 %}
+  <p class="empty">첫 주간 리포트는 일요일에 만들어집니다.</p>
+{% else %}
+  <ul class="list">
+    {% for p in weekly_pages %}
+      <li><a href="{{ p.url | relative_url }}">{{ p.title | escape }}</a>{% if p.summary %}<br><span class="meta">{{ p.summary | truncate: 90 | escape }}</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
