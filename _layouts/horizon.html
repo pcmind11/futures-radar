@@ -1,0 +1,16 @@
+---
+layout: default
+---
+<section class="hub {{ page.cls }}">
+  <h1>{{ page.horizon_name }} 후의 미래</h1>
+  <p class="lead">{{ page.blurb | escape }}</p>
+</section>
+{% assign hub_items = site.data.recent | where: "horizon", page.horizon_name %}
+<p class="count">최근 30일 동안 이 시점으로 분류된 신호 {{ hub_items.size | default: 0 }}건</p>
+{% if hub_items.size == 0 or hub_items == nil %}
+  <p class="empty">아직 수집된 신호가 없습니다. 자동 수집이 쌓이면 여기에 표시됩니다.</p>
+{% endif %}
+{% for itm in hub_items limit: 40 %}
+  {% include card.html item=itm %}
+{% endfor %}
+<p><a href="{{ '/reports/' | relative_url }}">주간 리포트에서 이 시점의 낙관·비관 관점 보기 →</a></p>
