@@ -1,0 +1,72 @@
+---
+layout: default
+title: 홈
+horizons:
+  - name: 3개월
+    url: /horizon/3m/
+    cls: h3m
+    desc: 정책·기술 발표·기업 투자·금융시장 등 가까운 시기의 변화
+  - name: 3년
+    url: /horizon/3y/
+    cls: h3y
+    desc: 기술 상용화, 산업구조, AI·로봇과 일자리, 투자환경의 변화
+  - name: 10년
+    url: /horizon/10y/
+    cls: h10y
+    desc: 삶과 사회구조, AI와 인간의 관계, 세계 질서의 구조적 변화
+---
+<section class="hero">
+  <h1>3개월 · 3년 · 10년 후의 신호를<br>매일 모으고, 매주 정리합니다</h1>
+  <p class="lead">미래학자·연구기관·언론이 지금 하는 말을 모아 시점별로 나누고, 그 위에 나만의 미래관을 쌓아가는 연구소입니다.</p>
+</section>
+
+{% assign st = site.data.status %}
+<section class="glance">
+  {% if st.latest_weekly %}
+    <h2>이번 주 한눈에 <small>{{ st.latest_weekly.date | escape }}</small></h2>
+    {% if st.latest_weekly.lines.size > 0 %}
+    <ul>
+      {% for line in st.latest_weekly.lines %}<li>{{ line | escape }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    <p><a href="{{ st.latest_weekly.url | relative_url }}">주간 리포트 전체 보기 →</a></p>
+  {% else %}
+    <h2>이번 주 한눈에</h2>
+    <p>첫 주간 리포트는 일요일(한국시간 오전 7시)에 만들어집니다.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>세 개의 시간 좌표</h2>
+  <div class="grid">
+    {% for h in page.horizons %}
+      {% assign hl = site.data.recent | where: "horizon", h.name %}
+      <div class="hubcard {{ h.cls }}">
+        <h3><a href="{{ h.url | relative_url }}">{{ h.name }} 후</a></h3>
+        <p class="desc">{{ h.desc }}</p>
+        <ul>
+          {% for itm in hl limit: 2 %}
+            <li><a href="{{ itm.link | escape }}" target="_blank" rel="noopener">{{ itm.ko_title | escape }}</a></li>
+          {% endfor %}
+          {% if hl.size == 0 or hl == nil %}<li class="empty">아직 신호 없음</li>{% endif %}
+        </ul>
+        <p><a href="{{ h.url | relative_url }}">{{ h.name }} 신호 보기 →</a></p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% if st.latest_day %}
+<section>
+  <h2>오늘의 신호 <small>{{ st.latest_day | escape }}</small></h2>
+  {% assign todays = site.data.recent | where: "day", st.latest_day %}
+  {% for itm in todays limit: 5 %}
+    {% include card.html item=itm %}
+  {% endfor %}
+  <p><a href="{{ '/signals/' | relative_url }}">지난 신호 모두 보기 →</a></p>
+</section>
+{% endif %}
+
+<aside class="notice">
+  <strong>수집 방식 안내</strong> · 구글 뉴스 검색(RSS)으로 헤드라인을 모으고 AI가 번역·요약합니다. 제목만 보고 만든 요약이라 근거 강도는 '낮음'이며, 중요한 내용은 원문으로 확인하세요. 자세한 내용은 <a href="{{ '/about/' | relative_url }}">소개</a>를 참고하세요.
+</aside>
