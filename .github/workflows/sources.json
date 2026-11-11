@@ -1,0 +1,26 @@
+json
+{
+  "domains": {
+    "AI·기술": [
+      {"q": "AI 미래 전망 전문가", "lang": "ko"},
+      {"q": "futurist forecast artificial intelligence", "lang": "en"}
+    ],
+    "인구·고령화·사회": [
+      {"q": "인구 고령화 미래 전망", "lang": "ko"},
+      {"q": "demographic forecast aging society future", "lang": "en"}
+    ],
+    "에너지·기후·환경·자원": [
+      {"q": "에너지 기후 미래 전망 2030", "lang": "ko"},
+      {"q": "energy climate outlook 2035 forecast", "lang": "en"}
+    ],
+    "경제·금융·투자": [
+      {"q": "세계 경제 중장기 전망", "lang": "ko"},
+      {"q": "global economy long-term outlook forecast", "lang": "en"}
+    ],
+    "미래학자·기관(공통)": [
+      {"q": "미래학자 전망", "lang": "ko"},
+      {"q": "유엔미래보고서", "lang": "ko"},
+      {"q": "futurist OR \"Institute for the Future\" OR \"Future Today Institute\" OR \"Millennium Project\"", "lang": "en"}
+    ]
+  }
+}
