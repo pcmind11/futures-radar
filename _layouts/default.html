@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.title and page.title != "홈" %}{{ page.title | escape }} · {% endif %}{{ site.title | escape }}</title>
+  <meta name="description" content="{{ page.summary | default: site.description | strip_newlines | escape }}">
+  <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body class="{{ page.body_class }}">
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="{{ '/' | relative_url }}">
+        <span class="brand-name">{{ site.title | escape }}</span>
+        <span class="brand-sub">Personal Future Intelligence Lab</span>
+      </a>
+      <nav class="nav" aria-label="주 메뉴">
+        <a href="{{ '/' | relative_url }}">홈</a>
+        <a class="n3m" href="{{ '/horizon/3m/' | relative_url }}">3개월</a>
+        <a class="n3y" href="{{ '/horizon/3y/' | relative_url }}">3년</a>
+        <a class="n10y" href="{{ '/horizon/10y/' | relative_url }}">10년</a>
+        <a href="{{ '/signals/' | relative_url }}">신호</a>
+        <a href="{{ '/reports/' | relative_url }}">리포트</a>
+        <a href="{{ '/about/' | relative_url }}">소개</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    {{ content }}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      {% if site.data.status.last_run_kst %}
+      <p>마지막 업데이트 {{ site.data.status.last_run_kst | escape }} KST · {{ site.data.status.schedule | escape }}</p>
+      {% endif %}
+      <p>AI가 헤드라인을 요약한 자료이므로 사실 확인은 원문 링크에서 하세요. 정보 제공·학습 목적이며 투자 권유가 아닙니다.</p>
+    </div>
+  </footer>
+</body>
+</html>
