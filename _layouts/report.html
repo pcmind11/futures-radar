@@ -1,0 +1,12 @@
+---
+layout: default
+---
+<article>
+  <p class="kicker">{% if page.type == "weekly" %}주간 리포트{% else %}리포트{% endif %}{% if page.day %} · {{ page.day }}{% endif %}</p>
+  <h1>{{ page.title | escape }}</h1>
+  {% if page.summary %}<p class="lead">{{ page.summary | escape }}</p>{% endif %}
+  <div class="notice">AI가 일일 헤드라인을 종합해 쓴 리포트입니다. 근거 강도의 기본값은 '낮음'이며, 본문의 번호를 누르면 원문으로 이동합니다.</div>
+  <div class="prose">
+    {{ content }}
+  </div>
+</article>
