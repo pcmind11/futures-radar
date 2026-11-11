@@ -1,0 +1,9 @@
+title: 미래 레이더
+description: 3개월·3년·10년 후의 신호 모니터
+lang: ko
+theme: minima
+exclude:
+  - agent.py
+  - sources.json
+  - prompts
+  - data
