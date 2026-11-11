@@ -1,4 +1,3 @@
-python
 """미래 레이더 - 수집·종합 에이전트 (표준 라이브러리만 사용)"""
 import datetime as dt
 import json
