@@ -1,0 +1,21 @@
+{% assign itm_h = include.item.horizon %}
+{% assign hcls = "hu" %}
+{% assign hlabel = "시점 불명" %}
+{% if itm_h == "3개월" %}{% assign hcls = "h3m" %}{% assign hlabel = "3개월" %}
+{% elsif itm_h == "3년" %}{% assign hcls = "h3y" %}{% assign hlabel = "3년" %}
+{% elsif itm_h == "10년" %}{% assign hcls = "h10y" %}{% assign hlabel = "10년" %}{% endif %}
+{% assign kcls = "" %}
+{% assign klabel = "" %}
+{% if include.item.kind == "사실·데이터" %}{% assign kcls = "fact" %}{% assign klabel = "사실" %}
+{% elsif include.item.kind == "예측" %}{% assign kcls = "est" %}{% assign klabel = "추정(전망)" %}
+{% elsif include.item.kind == "의견" %}{% assign kcls = "opinion" %}{% assign klabel = "전문가 의견" %}{% endif %}
+<article class="card {{ hcls }}">
+  <h3><a href="{{ include.item.link | escape }}" target="_blank" rel="noopener">{{ include.item.ko_title | escape }}</a></h3>
+  <p class="badges">
+    <span class="badge {{ hcls }}">{{ hlabel }}</span>
+    {% if klabel != "" %}<span class="badge {{ kcls }}">{{ klabel }}</span>{% endif %}
+    <span class="badge weak">근거 강도 낮음</span>
+  </p>
+  <p>{{ include.item.summary | escape }}</p>
+  <p class="meta">발언자 {{ include.item.speaker | default: "불명" | escape }} · {{ include.item.source | default: "출처 미상" | escape }}{% if include.item.published and include.item.published != "" %} · 발표 {{ include.item.published | escape }}{% endif %}{% if include.item.day %} · 수집 {{ include.item.day | escape }}{% endif %}</p>
+</article>
