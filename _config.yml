@@ -1,9 +1,11 @@
-title: 미래 레이더
-description: 3개월·3년·10년 후의 신호 모니터
+title: 나의 미래전략연구소
+description: 3개월·3년·10년 후의 신호를 매일 모으고 매주 정리하는 미래 연구소
 lang: ko
-theme: minima
+markdown: kramdown
+baseurl: "/futures-radar"
 exclude:
   - agent.py
   - sources.json
   - prompts
   - data
+  - README.md
