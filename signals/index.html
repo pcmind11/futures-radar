@@ -1,0 +1,16 @@
+---
+layout: default
+title: 일일 신호
+---
+<h1>일일 신호</h1>
+<div class="notice">매일 한국시간 오전 7시에 자동 수집한 헤드라인을 AI가 번역·요약한 목록입니다. 근거 강도는 모두 '낮음'입니다.</div>
+{% assign day_pages = site.pages | where_exp: "p", "p.path contains 'daily/'" | sort: "path" | reverse %}
+{% if day_pages.size == 0 %}
+  <p class="empty">아직 수집된 신호가 없습니다.</p>
+{% else %}
+  <ul class="list">
+    {% for p in day_pages %}
+      <li><a href="{{ p.url | relative_url }}">{{ p.title | escape }}</a></li>
+    {% endfor %}
+  </ul>
+{% endif %}
