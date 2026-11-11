@@ -1,0 +1,20 @@
+---
+layout: default
+---
+<article>
+  <p class="kicker">일일 신호</p>
+  <h1>{{ page.title | escape }}</h1>
+  <div class="notice">헤드라인만 보고 만든 AI 요약입니다. 근거 강도는 모두 '낮음'이며, 제목을 누르면 원문으로 이동합니다.</div>
+  {% assign day_items = site.data.signals[page.day] %}
+  {% if day_items and day_items.size > 0 %}
+    {% assign groups = day_items | group_by: "domain" %}
+    {% for g in groups %}
+      <h2>{{ g.name | escape }}</h2>
+      {% for itm in g.items %}
+        {% include card.html item=itm %}
+      {% endfor %}
+    {% endfor %}
+  {% else %}
+    <div class="prose">{{ content }}</div>
+  {% endif %}
+</article>
